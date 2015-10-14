@@ -2,12 +2,19 @@
 
 use strict;
 use warnings;
+use Cwd 'abs_path';
+
+## usage:  perl mcpipe.pl FWD.fq REV.fq prefix
+
+## Setup script path
+my $script_dir = abs_path($0);
+$script_dir =~ s/\/mcpipe\.pl//;
 
 ## Parse args
 my ($fwd, $rev, $pref) = (shift, shift, shift);
 
 ## Get adapter seqs
-system("perl ~/bin/ilmnartifactfa.pl $fwd $rev > tmpartifacts.fa");
+system("perl $script_dir/ilmnartifactfa.pl $fwd $rev > tmpartifacts.fa");
 
 ## Musket
 system("musket -p 38 -inorder -omulti $pref.musket -k 31 536870912 $fwd $rev");
@@ -15,7 +22,7 @@ system("mv $pref.musket.0 $pref.musket.0.fastq");
 system("mv $pref.musket.1 $pref.musket.1.fastq");
 
 ## Trim
-system("perl ~/bin/trimmomatic.pl $pref.musket.0.fastq $pref.musket.1.fastq tmpartifacts.fa");
+system("perl $script_dir/trimmomatic.pl $pref.musket.0.fastq $pref.musket.1.fastq tmpartifacts.fa");
 
 ## Flash pairs
 system("flash -t 38 -o $pref.tp $pref.musket.0.trimpair.fastq $pref.musket.1.trimpair.fastq");
