@@ -6,6 +6,9 @@ use Cwd 'abs_path';
 
 ## usage:  perl mcpipe.pl FWD.fq REV.fq prefix
 
+my $k = 31;
+my $threads = 38;
+
 ## Setup script path
 my $script_dir = abs_path($0);
 $script_dir =~ s/\/mcpipe\.pl//;
@@ -13,24 +16,17 @@ $script_dir =~ s/\/mcpipe\.pl//;
 ## Parse args
 my ($fwd, $rev, $pref) = (shift, shift, shift);
 
-## Get adapter seqs
-system("perl $script_dir/ilmnartifactfa.pl $fwd $rev > tmpartifacts.fa");
-
 ## Musket
-system("musket -p 38 -inorder -omulti $pref.musket -k 31 536870912 $fwd $rev");
+system("musket -p $threads -inorder -omulti $pref.musket -k $k 536870912 $fwd $rev");
 system("mv $pref.musket.0 $pref.musket.0.fastq");
 system("mv $pref.musket.1 $pref.musket.1.fastq");
 
-## Trim
-system("perl $script_dir/trimmomatic.pl $pref.musket.0.fastq $pref.musket.1.fastq tmpartifacts.fa");
-
 ## Flash pairs
-system("flash -t 38 -o $pref.tp $pref.musket.0.trimpair.fastq $pref.musket.1.trimpair.fastq");
+system("flash -t $threads -o $pref $pref.musket.0.fastq $pref.musket.1.fastq");
 
 ## Ray
-system("mpiexec -c 38 Ray -k 31 -o $pref-ray-31 " .
+system("mpiexec -c $threads Ray -k $k -o $pref-ray-$k " .
 	"-disable-scaffolder -disable-network-test " .
-	"-s $pref.tp.extendedFrags.fastq -p $pref.tp.notCombined_1.fastq " .
-	"$pref.tp.notCombined_2.fastq -s $pref.musket.0.trimunpair.fastq " .
-	"-s $pref.musket.1.trimunpair.fastq < /dev/null " .
-	"1> $pref.ray-31.out 2> $pref.ray-31.err");
+	"-s $pref.extendedFrags.fastq -p $pref.notCombined_1.fastq " .
+	"$pref.notCombined_2.fastq < /dev/null " .
+	"1> $pref.ray-$k.out 2> $pref.ray-$k.err");
